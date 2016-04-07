@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0,initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="renderer" content="webkit">
+    <title>my unlock</title>
+    <style type="text/css">
+    html,
+    body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+    }
+    
+    canvas {
+        /*display: block;*/
+        vertical-align: middle;
+    }
+    </style>
+</head>
+
+<body>
+    <canvas id="unlock"></canvas>
+    <script type="text/javascript">
+    function Unlock() {
+        this.lockLocation = [];
+        this.selectLock = [];
+        this.lastTouch = null;
+        this.lockR = 30;
+        this.padding = 20;
+        this.canvas = null;
+        this.init();
+    }
+
+    Unlock.prototype.init = function() {
+        this.canvas = document.querySelector('#unlock');
+        var ww = window.innerWidth;
+        var wh = window.innerHeight;
+        this.canvas.width = ww;
+        this.canvas.height = wh;
+        this.selectLock.length = 0;
+        this.calLockLocation(ww, wh);
+        this.initEvent();
+        this.draw();
+    }
+
+    Unlock.prototype.calLockLocation = function(width, height) {
+        var r = this.lockR;
+        var offsetX = (width - this.padding * 2 - r * 6) / 2;
+        var offsetY = (height - this.padding * 2 - r * 6) / 2;
+        var offset = 0;
+        if (offsetX < offsetY) {
+            offset = offsetX;
+        } else {
+            offset = offsetY;
+        }
+        var row, clu;
+        for (row = 0; row < 3; row++) {
+            for (clu = 0; clu < 3; clu++) {
+                this.lockLocation.push({
+                    x: this.padding + r * (2 * clu + 1) + offset * clu,
+                    y: this.padding + r * (2 * row + 1) + offset * row,
+                    num: row * 3 + clu
+                });
+            }
+
+        }
+    }
+
+    Unlock.prototype.draw = function() {
+        var ctx = this.canvas.getContext('2d');
+        var r = this.lockR;
+        var i, len, item;
+
+
+        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        //画圆
+        ctx.save();
+        ctx.strokeStyle = "#0000ff";
+        ctx.fillStyle = "#ffffff";
+        ctx.lineWidth = 2;
+        for (i = 0, len = this.lockLocation.length; i < len; i++) {
+            item = this.lockLocation[i];
+            ctx.beginPath();
+            ctx.arc(item.x, item.y, r, 0, 2 * Math.PI);
+            //ctx.fill();
+            ctx.closePath();
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        //画线
+        ctx.save();
+        ctx.strokeStyle = "#0000ff";
+        //ctx.lineCap="round";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        item = this.selectLock[0];
+        if (item) {
+            ctx.moveTo(item.x, item.y);
+        }
+        for (i = 1, len = this.selectLock.length; i < len; i++) {
+            item = this.selectLock[i];
+            //ctx.beginPath();
+            ctx.lineTo(item.x, item.y);
+        }
+        if (this.lastTouch) {
+            ctx.lineTo(this.lastTouch.x, this.lastTouch.y);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        //画圆心
+        ctx.save();
+        ctx.fillStyle = "#0000ff";
+        for (i = 0, len = this.selectLock.length; i < len; i++) {
+            item = this.selectLock[i];
+            ctx.beginPath();
+            ctx.arc(item.x, item.y, r / 3, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+        ctx.restore();
+
+    }
+
+    Unlock.prototype.initEvent = function() {
+        var canvas = this.canvas;
+        var self = this;
+        var isMouseDown = false;
+        if (/mobile/i.test(navigator.userAgent)) {
+            canvas.addEventListener('touchstart', function(e) {
+                self.selectLock.length = 0;
+                self.lastTouch = null;
+                var touch = e.touches[0];
+                self.isSelected(touch.clientX, touch.clientY);
+                self.draw();
+            }, false);
+
+            canvas.addEventListener('touchmove', function(e) {
+                var touch = e.touches[0];
+                self.isSelected(touch.clientX, touch.clientY);
+                self.lastTouch = {
+                    x: touch.clientX,
+                    y: touch.clientY
+                }
+                self.draw();
+            }, false);
+
+            canvas.addEventListener('touchend', function(e) {
+                var text = self.selectLock.map(function(ele) {
+                    return ele.num;
+                }).join('-');
+                console.log(text);
+                self.lastTouch = null;
+                self.draw();
+            }, false);
+        } else {
+            canvas.addEventListener('mousedown', function(e) {
+                self.selectLock.length = 0;
+                self.lastTouch = null;
+                isMouseDown = true;
+                var touch = e;
+                self.isSelected(touch.clientX, touch.clientY);
+                self.draw();
+            }, false);
+
+            canvas.addEventListener('mousemove', function(e) {
+                if (isMouseDown) {
+                    var touch = e;
+                    self.isSelected(touch.clientX, touch.clientY);
+                    self.lastTouch = {
+                        x: touch.clientX,
+                        y: touch.clientY
+                    }
+                    self.draw();
+                }
+            }, false);
+
+            canvas.addEventListener('mouseup', function(e) {
+                isMouseDown = false;
+                var text = self.selectLock.map(function(ele) {
+                    return ele.num;
+                }).join('-');
+                console.log(text);
+                self.lastTouch = null;
+                self.draw();
+            }, false);
+        }
+
+    }
+
+    Unlock.prototype.isSelected = function(x, y) {
+        var self = this;
+        var r = this.lockR;
+        this.lockLocation.forEach(function(ele) {
+            if ((Math.abs(x - ele.x) < r) && (Math.abs(y - ele.y) < r)) {
+                if (self.selectLock.indexOf(ele) === -1) {
+                    self.selectLock.push(ele);
+                }
+            }
+        });
+    }
+
+    var unlock = new Unlock();
+    </script>
+</body>
+
+</html>
